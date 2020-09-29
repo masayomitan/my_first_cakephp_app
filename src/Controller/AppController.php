@@ -27,7 +27,6 @@ use Cake\Event\Event;
  */
 class AppController extends Controller
 {
-
     /**
      * Initialization hook method.
      *
@@ -37,19 +36,52 @@ class AppController extends Controller
      *
      * @return void
      */
-    public function initialize()
+    public function initialize() /* modify */
     {
-        parent::initialize();
-
-        $this->loadComponent('RequestHandler', [
-            'enableBeforeRedirect' => false,
-        ]);
         $this->loadComponent('Flash');
+        $this->loadComponent('Auth', [
+            'authorize'=> 'Controller',
+            'authenticate' => [
+                'Form' => [
+                    'fields' => [
+                        'username' => 'email',
+                        'password' => 'password'
+                    ]
+                ]
+            ],
+            'loginAction' => [
+                'controller' => 'Users',
+                'action' => 'login'
+            ],
+            // コントローラーで isAuthorized を使用します
+            'authorize' => ['Controller'],
+            // 未認証の場合、直前のページに戻します
+            'unauthorizedRedirect' => $this->referer()
+        ]);
 
-        /*
-         * Enable the following component for recommended CakePHP security settings.
-         * see https://book.cakephp.org/3/en/controllers/components/security.html
-         */
-        //$this->loadComponent('Security');
+        // display アクションを許可して、PagesController が引き続き
+        // 動作するようにします。また、読み取り専用のアクションを有効にします。
+        $this->Auth->allow(['display', 'view', 'index']);
     }
+
+
+    public function isAuthorized($user)
+{
+    $action = $this->request->getParam('action');
+    // add および tags アクションは、常にログインしているユーザーに許可されます。
+    if (in_array($action, ['add', 'tags'], true)) {
+        return true;
+    }
+
+    // 他のすべてのアクションにはスラッグが必要です。
+    $slug = $this->request->getParam('pass.0');
+    if (!$slug) {
+        return false;
+    }
+
+    // 記事が現在のユーザーに属していることを確認します。
+    $article = $this->Articles->findBySlug($slug)->first();
+
+    return $article->user_id === $user['id'];
+}
 }
