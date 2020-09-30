@@ -62,9 +62,9 @@ class ArticlesTable extends Table
         $query->innerJoinWith('Tags')
             ->where(['Tags.title IN' => $options['tags']]);
     }
-
     return $query->group(['Articles.id']);
     }
+
 
     protected function _buildTags($tagString)
     {
